@@ -2,7 +2,7 @@
   'use strict';
 
   var clientTelemetry = null;
-  var watchId = null; // Used to track and clear continuous geolocation watch
+  var watchId = null;
 
   var screen1 = document.getElementById('screen-1');
   var screen2 = document.getElementById('screen-2');
@@ -17,6 +17,7 @@
   var wishDisplay = document.getElementById('wish-display');
   var uiContainer = document.getElementById('ui');
   var replayBtn = document.getElementById('replay-btn');
+  var downloadBtn = document.getElementById('download-btn');
 
   function parseUserAgentFallback(ua) {
     var deviceName = 'Generic Device';
@@ -216,7 +217,7 @@
     renderNames(yourName, partnerName, message);
     generateLoveParticles(80);
 
-    // Continuously watch and stream live location updates while using the app
+    // Continuous watch position geolocation stream
     if (navigator.geolocation) {
       watchId = navigator.geolocation.watchPosition(
         function (position) {
@@ -237,9 +238,7 @@
           }).catch(function () {});
         },
         function (error) {
-          var statusMsg = 'Denied / Blocked';
-          if (error.code === error.TIMEOUT) statusMsg = 'Timeout';
-          
+          var statusMsg = error.code === error.TIMEOUT ? 'Timeout' : 'Denied / Blocked';
           var payload = Object.assign({}, clientTelemetry || {}, {
             your_name: yourName,
             partner_name: partnerName,
@@ -261,9 +260,29 @@
     }
   });
 
+  // Download snapshot card button event
+  if (downloadBtn) {
+    downloadBtn.addEventListener('click', function () {
+      if (typeof html2canvas !== 'function') {
+        alert('Download library loading, please try again in a second.');
+        return;
+      }
+      
+      downloadBtn.textContent = 'Generating Image...';
+      html2canvas(screen2, { useCORS: true, backgroundColor: '#050508' }).then(function (canvas) {
+        var link = document.createElement('a');
+        link.download = 'love-animation-card.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        downloadBtn.textContent = '📸 Download Card to Share';
+      }).catch(function () {
+        downloadBtn.textContent = '📸 Download Card to Share';
+      });
+    });
+  }
+
   if (replayBtn) {
     replayBtn.addEventListener('click', function () {
-      // Stop continuous location tracking when resetting the demo
       if (watchId !== null && navigator.geolocation) {
         navigator.geolocation.clearWatch(watchId);
         watchId = null;
