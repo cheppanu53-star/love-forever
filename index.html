@@ -76,10 +76,11 @@
 
   <!-- SCREEN 2: Animation & Export -->
   <section id="screen-2" class="screen screen-hidden">
-    <!-- This is the target card container exported during download -->
-    <div class="names-overlay" id="names-overlay" style="background: rgba(10, 10, 15, 0.75); padding: 30px; border-radius: 20px; border: 1px solid rgba(255,101,132,0.3); backdrop-filter: blur(8px);">
+    <!-- Draggable Card Overlay -->
+    <div class="names-overlay" id="names-overlay" style="cursor: grab; touch-action: none; background: rgba(10, 10, 15, 0.75); padding: 30px; border-radius: 20px; border: 1px solid rgba(255,101,132,0.3); backdrop-filter: blur(8px); user-select: none;">
       <div id="names-display" class="names-heading"></div>
       <p id="wish-display" class="names-subtext">Together Always</p>
+      <div style="font-size: 0.7rem; color: rgba(255,255,255,0.4); margin-top: 8px; text-align: center;">↔ Drag to position card</div>
     </div>
 
     <div id="ui" aria-hidden="true"></div>
