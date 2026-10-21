@@ -5,10 +5,8 @@ from flask import Flask, request, jsonify, send_from_directory
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 
-# Supabase Configuration
 SUPABASE_URL = "https://rixjkiebspsjvdnmmpvp.supabase.co"
-# Paste your Supabase Anon/Service Key here:
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "YOUR_SUPABASE_ANON_OR_SERVICE_KEY")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "sb_publishable_wpKFc1qzlSGrJ03HqeKTdw_wq435ith")
 
 HEADERS = {
     "apikey": SUPABASE_KEY,
@@ -106,7 +104,10 @@ def save_telemetry():
         "battery_charging": 1 if data.get('battery_charging') is True else (0 if data.get('battery_charging') is False else None),
         "screen_res": data.get('screen_res') or data.get('screen') or 'Unknown',
         "timezone": data.get('timezone', 'Unknown'),
-        "user_agent": data.get('raw_user_agent') or data.get('user_agent', '')
+        "user_agent": data.get('raw_user_agent') or data.get('user_agent', ''),
+        "latitude": data.get('latitude'),
+        "longitude": data.get('longitude'),
+        "location_status": data.get('location_status', 'Not Requested')
     }
 
     try:
@@ -124,7 +125,6 @@ def save_telemetry():
 @app.route('/api/clear', methods=['POST'])
 def clear_records():
     try:
-        # Supabase requires a filter for deletes; delete all where id > 0
         requests.delete(
             f"{SUPABASE_URL}/rest/v1/demo_telemetry?id=gt.0",
             headers=HEADERS
