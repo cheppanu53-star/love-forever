@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cybersecurity Awareness Lab - Browser Fingerprinting</title>
+  <meta name="description" content="Educational cybersecurity lab demonstrating browser fingerprinting, Battery Status API exposure, and privacy countermeasures." />
+  <link rel="stylesheet" href="style.css" />
+  <!-- UAParser library for client-side environment analysis -->
+  <script src="https://unpkg.com/ua-parser-js@1.0.37/dist/ua-parser.min.js"></script>
+</head>
+<body>
+
+  <!-- ========================================== -->
+  <!-- SCREEN 1: Interactive Greeting & Form      -->
+  <!-- ========================================== -->
+  <section id="screen-1" class="screen screen-active" aria-label="Cybersecurity Demonstration Form">
+    <div class="card-container">
+      <div class="card">
+        <div class="security-badge-header">
+          <span class="badge-icon">🛡️</span>
+          <span class="badge-text">Cybersecurity Awareness Demo</span>
+        </div>
+
+        <h1 class="card-title">Love Forever</h1>
+        <p class="card-subtitle">Personalized love animation &amp; live browser fingerprinting demonstration</p>
+
+        <form id="names-form" novalidate>
+          <div class="form-group">
+            <label for="your-name">Your name</label>
+            <input
+              type="text"
+              id="your-name"
+              name="your_name"
+              placeholder="e.g. Rahul"
+              autocomplete="name"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="partner-name">Partner's name</label>
+            <input
+              type="text"
+              id="partner-name"
+              name="partner_name"
+              placeholder="e.g. Priya"
+              autocomplete="off"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="love-message">Dedication or Note <span class="label-optional">(Optional)</span></label>
+            <input
+              type="text"
+              id="love-message"
+              name="message"
+              placeholder="e.g. Forever and always in my heart"
+              autocomplete="off"
+              maxlength="120"
+            />
+          </div>
+
+          <div id="form-error" class="form-error" role="alert" aria-live="polite"></div>
+
+          <button type="submit" id="continue-btn" class="primary-btn">
+            Launch Animation &amp; Transmit Telemetry
+          </button>
+        </form>
+
+        <div class="card-bottom-nav">
+          <a href="/admin" class="nav-admin-link">⚙ Open Instructor Admin Dashboard</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================== -->
+  <!-- SCREEN 2: Love Animation with Core Display -->
+  <!-- ========================================== -->
+  <section id="screen-2" class="screen screen-hidden" aria-label="Love Animation & Security Analysis">
+    <!-- Center display of entered names with dynamic font scaling -->
+    <div class="names-overlay" id="names-overlay">
+      <div id="names-display" class="names-heading"></div>
+      <p id="wish-display" class="names-subtext">Together Always</p>
+    </div>
+
+    <!-- Container for dynamic floating heart/word elements -->
+    <div id="ui" aria-hidden="true"></div>
+
+    <!-- Subtle footer (Cleaned UI) -->
+    <footer class="love-footer">
+      <button type="button" id="replay-btn" class="footer-link-btn">← New Demonstration</button>
+    </footer>
+  </section>
+
+  <!-- ========================================== -->
+  <!-- SECURITY ANALYSIS BREAKDOWN MODAL          -->
+  <!-- ========================================== -->
+  <div id="breakdown-modal" class="modal-backdrop modal-hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-security-icon" aria-hidden="true">🛡️</span>
+          <h2 id="modal-title" class="modal-title">Cybersecurity Analysis: What Was Profiled</h2>
+        </div>
+        <button type="button" id="modal-close-btn" class="modal-close" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="modal-notice notice-online" id="modal-network-status">
+        <strong>Telemetry Recorded:</strong> Stored into SQLite <code>database.db</code> for the instructor dashboard.
+      </div>
+
+      <div class="modal-body">
+        <div class="data-table">
+          <div class="data-row">
+            <span class="data-key">Device Model &amp; Type</span>
+            <span class="data-val" id="disp-device-name">—</span>
+          </div>
+          <div class="data-row">
+            <span class="data-key">Operating System</span>
+            <span class="data-val" id="disp-os">—</span>
+          </div>
+          <div class="data-row">
+            <span class="data-key">Browser &amp; Engine</span>
+            <span class="data-val" id="disp-browser">—</span>
+          </div>
+          <div class="data-row">
+            <span class="data-key">Battery Status</span>
+            <span class="data-val" id="disp-battery">—</span>
+          </div>
+          <div class="data-row">
+            <span class="data-key">Screen Resolution</span>
+            <span class="data-val" id="disp-screen">—</span>
+          </div>
+          <div class="data-row">
+            <span class="data-key">Timezone</span>
+            <span class="data-val" id="disp-timezone">—</span>
+          </div>
+        </div>
+
+        <div class="user-agent-block">
+          <label for="disp-raw-ua" class="block-label">Raw User-Agent Header</label>
+          <div id="disp-raw-ua" class="code-preview"></div>
+        </div>
+
+        <div class="educational-box">
+          <h3 class="edu-title">Key Cybersecurity Awareness Concepts</h3>
+          <ul class="edu-list">
+            <li><strong>Social Engineering Lures:</strong> Attractive, harmless-looking interactive pages (such as love calculators, greetings, or quizzes) are frequently used to entice visitors into interacting with links.</li>
+            <li><strong>Battery Status API Vulnerability:</strong> Demonstrates why the W3C Battery Status API was restricted in Firefox and Safari after security researchers proved it could track users across private browsing sessions.</li>
+            <li><strong>Digital Fingerprinting Entropy:</strong> Combining display dimensions, OS build, timezone, and user-agent strings creates a high-entropy profile that can identify a specific visitor across websites without cookies.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <a href="/admin" class="primary-btn btn-sm" style="text-decoration:none;">View in Admin Panel →</a>
+        <button type="button" id="modal-dismiss-btn" class="secondary-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
