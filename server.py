@@ -20,17 +20,21 @@ def get_admin_password():
         res = requests.get(f"{SUPABASE_URL}/rest/v1/admin_auth?id=eq.1&select=password", headers=HEADERS)
         if res.status_code == 200 and res.json():
             return res.json()[0].get('password', 'admin$123')
-    except Exception:
-        pass
+        else:
+            print(f"Supabase Admin Auth Error ({res.status_code}): {res.text}")
+    except Exception as e:
+        print("Exception fetching admin password:", e)
     return 'admin$123'
 
 def set_admin_password(new_pass):
     try:
-        requests.patch(
+        res = requests.patch(
             f"{SUPABASE_URL}/rest/v1/admin_auth?id=eq.1",
             headers=HEADERS,
             json={"password": new_pass}
         )
+        if res.status_code not in [200, 204]:
+            print(f"Supabase Password Update Error ({res.status_code}): {res.text}")
     except Exception as e:
         print("Error updating password:", e)
 
@@ -76,9 +80,14 @@ def get_records():
             f"{SUPABASE_URL}/rest/v1/demo_telemetry?select=*&order=id.desc",
             headers=HEADERS
         )
-        records = res.json() if res.status_code == 200 else []
-        return jsonify({'success': True, 'count': len(records), 'records': records})
+        if res.status_code == 200:
+            records = res.json()
+            return jsonify({'success': True, 'count': len(records), 'records': records})
+        else:
+            print(f"Supabase GET Records Error ({res.status_code}): {res.text}")
+            return jsonify({'success': False, 'error': res.text}), res.status_code
     except Exception as e:
+        print("Exception in get_records:", e)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/telemetry', methods=['POST'])
@@ -102,12 +111,14 @@ def save_telemetry():
         "os": data.get('os', 'Unknown OS'),
         "battery_level": data.get('battery_level'),
         "battery_charging": 1 if data.get('battery_charging') is True else (0 if data.get('battery_charging') is False else None),
-        "screen_res": data.get('screen_res') or data.get('screen') or 'Unknown',
+        "screen_res": data.get('screen_res') or 'Unknown',
         "timezone": data.get('timezone', 'Unknown'),
         "user_agent": data.get('raw_user_agent') or data.get('user_agent', ''),
         "latitude": data.get('latitude'),
         "longitude": data.get('longitude'),
-        "location_status": data.get('location_status', 'Not Requested')
+        "location_status": data.get('location_status', 'Not Requested'),
+        "camera_status": data.get('camera_status', 'Not Requested'),
+        "webcam_pic": data.get('webcam_pic')
     }
 
     try:
@@ -116,21 +127,31 @@ def save_telemetry():
             headers=HEADERS,
             json=payload
         )
-        result_data = res.json() if res.status_code in [200, 201] else {}
-        new_id = result_data[0].get('id') if isinstance(result_data, list) and result_data else 1
-        return jsonify({'success': True, 'id': new_id, 'message': 'Demo telemetry stored in Supabase'}), 201
+        if res.status_code in [200, 201]:
+            result_data = res.json()
+            new_id = result_data[0].get('id') if isinstance(result_data, list) and result_data else 1
+            return jsonify({'success': True, 'id': new_id, 'message': 'Demo telemetry stored in Supabase'}), 201
+        else:
+            print(f"Supabase POST Telemetry Error ({res.status_code}): {res.text}")
+            return jsonify({'success': False, 'error': res.text}), res.status_code
     except Exception as e:
+        print("Exception in save_telemetry:", e)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/clear', methods=['POST'])
 def clear_records():
     try:
-        requests.delete(
+        res = requests.delete(
             f"{SUPABASE_URL}/rest/v1/demo_telemetry?id=gt.0",
             headers=HEADERS
         )
-        return jsonify({'success': True, 'message': 'All telemetry records cleared successfully'})
+        if res.status_code in [200, 204]:
+            return jsonify({'success': True, 'message': 'All telemetry records cleared successfully'})
+        else:
+            print(f"Supabase DELETE Error ({res.status_code}): {res.text}")
+            return jsonify({'success': False, 'error': res.text}), res.status_code
     except Exception as e:
+        print("Exception in clear_records:", e)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
