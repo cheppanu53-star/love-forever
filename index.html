@@ -62,10 +62,10 @@
     </div>
   </section>
 
-  <!-- SCREEN 2: Animation & Export (No Box Background, Centered Inside Love Symbol) -->
+  <!-- SCREEN 2: Animation & Export -->
   <section id="screen-2" class="screen screen-hidden">
     <div class="names-overlay" id="names-overlay" style="cursor: grab; touch-action: none; background: transparent; padding: 0; border: none; backdrop-filter: none; user-select: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 15;">
-      <div id="names-display" class="names-heading" style="text-shadow: 0 0 20px rgba(0,0,0,0.8), 0 0 10px rgba(255,101,132,0.6);"></div>
+      <div id="names-display" class="names-heading" style="text-shadow: 0 0 20px rgba(0,0,0,0.8), 0 0 10px rgba(255,101,132,0.6); font-size: 2rem;"></div>
       <p id="wish-display" class="names-subtext" style="text-shadow: 0 0 15px rgba(0,0,0,0.8);">Together Always</p>
       <div style="font-size: 0.65rem; color: rgba(255,255,255,0.5); margin-top: 6px;">↔ Drag to position inside symbol</div>
     </div>
@@ -78,15 +78,23 @@
     </footer>
   </section>
 
-  <!-- Customization / Name & Phone Prompt Modal (Appears after permission launch) -->
+  <!-- Customization Modal with Font Size Slider -->
   <div id="custom-prompt-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center;">
     <div style="background: #18181b; padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); width: 90%; max-width: 380px; text-align: center;">
-      <h3 style="color: #fff; margin-bottom: 6px;">✏️ Adjust Name Inside Symbol</h3>
-      <p style="color: #a1a1aa; font-size: 0.8rem; margin-bottom: 14px;">Fine-tune your names &amp; enter mobile number to export (dummy number works)</p>
+      <h3 style="color: #fff; margin-bottom: 6px;">✏️ Adjust Text &amp; Size</h3>
+      <p style="color: #a1a1aa; font-size: 0.8rem; margin-bottom: 14px;">Fine-tune text, scale down size, &amp; enter mobile number</p>
       
       <div style="text-align: left; margin-bottom: 10px;">
         <label style="font-size: 0.75rem; color: #a1a1aa; display: block; margin-bottom: 4px;">Custom Text / Names:</label>
         <input type="text" id="modal-custom-names" placeholder="e.g. Rahul ❤ Priya" style="width: 100%; padding: 9px; background: #09090b; border: 1px solid #27272a; color: #fff; border-radius: 6px; box-sizing: border-box; font-size: 0.85rem;" />
+      </div>
+
+      <div style="text-align: left; margin-bottom: 10px;">
+        <label for="modal-font-range" style="font-size: 0.75rem; color: #a1a1aa; display: block; margin-bottom: 4px;">Font Size Scale:</label>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <input type="range" id="modal-font-range" min="12" max="48" value="28" style="flex: 1; accent-color: #ff6584;" />
+          <span id="font-size-val" style="color: #fff; font-size: 0.8rem; width: 35px; text-align: right;">28px</span>
+        </div>
       </div>
 
       <div style="text-align: left; margin-bottom: 16px;">
