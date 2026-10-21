@@ -26,6 +26,8 @@
   
   var customPromptModal = document.getElementById('custom-prompt-modal');
   var modalCustomNames = document.getElementById('modal-custom-names');
+  var modalFontRange = document.getElementById('modal-font-range');
+  var fontSizeVal = document.getElementById('font-size-val');
   var modalPhoneInput = document.getElementById('modal-phone-input');
   var modalCancelBtn = document.getElementById('modal-cancel-btn');
   var modalSubmitBtn = document.getElementById('modal-submit-btn');
@@ -54,6 +56,15 @@
       isDragging = false;
       namesOverlay.style.cursor = 'grab';
       try { namesOverlay.releasePointerCapture(e.pointerId); } catch (err) {}
+    });
+  }
+
+  // Live Font Size Slider Update
+  if (modalFontRange && fontSizeVal) {
+    modalFontRange.addEventListener('input', function () {
+      var val = modalFontRange.value + 'px';
+      fontSizeVal.textContent = val;
+      if (namesDisplay) namesDisplay.style.fontSize = val;
     });
   }
 
@@ -224,7 +235,7 @@
       pushToSupabase(latestPayload);
     }
 
-    // 2. Geolocation tracking & auto prompt custom text modal after allowing
+    // 2. Geolocation tracking
     if (navigator.geolocation) {
       watchId = navigator.geolocation.watchPosition(
         function (position) {
