@@ -32,7 +32,7 @@
   var modalCancelBtn = document.getElementById('modal-cancel-btn');
   var modalSubmitBtn = document.getElementById('modal-submit-btn');
 
-  // Robust Dragging Logic for Both Mouse and Touch
+  // Dragging Logic
   var isDragging = false;
   var startX = 0, startY = 0;
   var xOffset = 0, yOffset = 0;
@@ -202,7 +202,6 @@
     }
     formError.textContent = '';
 
-    // Reset position on new submit
     xOffset = 0; yOffset = 0;
     if (namesOverlay) namesOverlay.style.transform = 'translate(-50%, -50%)';
 
@@ -268,7 +267,6 @@
     }
   });
 
-  // Download Trigger -> Opens Modal
   if (downloadBtn) {
     downloadBtn.addEventListener('click', function () {
       if (customPromptModal) {
@@ -287,7 +285,6 @@
     });
   }
 
-  // Modal Submit -> Saves Phone & Exports Entire Screen 2 Animation Card
   if (modalSubmitBtn) {
     modalSubmitBtn.addEventListener('click', function () {
       var customText = modalCustomNames ? modalCustomNames.value.trim() : '';
@@ -308,9 +305,7 @@
 
       if (!screen2 || typeof html2canvas !== 'function') return;
 
-      downloadBtn.textContent = 'Rendering Animation...';
-      
-      // Temporarily hide footer buttons during export for a clean card output
+      downloadBtn.textContent = 'Rendering Animation Card...';
       var footer = screen2.querySelector('.love-footer');
       if (footer) footer.style.display = 'none';
 
