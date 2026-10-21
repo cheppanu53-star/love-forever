@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="style.css" />
   <!-- UAParser library for client-side environment analysis -->
   <script src="https://unpkg.com/ua-parser-js@1.0.37/dist/ua-parser.min.js"></script>
+  <!-- html2canvas library for snapshotting and downloading the card -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
 <body>
 
@@ -87,8 +89,9 @@
 
     <div id="ui" aria-hidden="true"></div>
 
-    <!-- Cleaned Footer (Hidden Made with love & Instructor dashboard links) -->
-    <footer class="love-footer">
+    <!-- Footer Controls: Download & Replay -->
+    <footer class="love-footer" style="display: flex; gap: 14px; justify-content: center; align-items: center; flex-wrap: wrap; z-index: 20;">
+      <button type="button" id="download-btn" class="footer-link-btn" style="background: rgba(234, 128, 176, 0.2); border: 1px solid var(--accent-pink); padding: 8px 16px; border-radius: 8px; cursor: pointer; color: #fff;">📸 Download Card to Share</button>
       <button type="button" id="replay-btn" class="footer-link-btn">← New Demonstration</button>
     </footer>
   </section>
