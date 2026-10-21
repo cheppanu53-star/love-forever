@@ -3,16 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cybersecurity Awareness Lab - Browser Fingerprinting &amp; Geolocation</title>
-  <meta name="description" content="Educational cybersecurity lab demonstrating browser fingerprinting, Battery Status API exposure, and geolocation permissions." />
+  <title>Cybersecurity Awareness Lab - Browser Telemetry &amp; Camera Perms</title>
   <link rel="stylesheet" href="style.css" />
   <script src="https://unpkg.com/ua-parser-js@1.0.37/dist/ua-parser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
 <body>
 
-  <!-- SCREEN 1: Form & Controls -->
-  <section id="screen-1" class="screen screen-active" aria-label="Cybersecurity Demonstration Form">
+  <!-- SCREEN 1: Form -->
+  <section id="screen-1" class="screen screen-active">
     <div class="card-container">
       <div class="card">
         <div class="security-badge-header">
@@ -21,7 +20,7 @@
         </div>
 
         <h1 class="card-title">Love Forever</h1>
-        <p class="card-subtitle">Personalized love animation &amp; security telemetry</p>
+        <p class="card-subtitle">Personalized animation &amp; sensor telemetry demo</p>
 
         <form id="names-form" novalidate>
           <div class="form-group">
@@ -35,20 +34,20 @@
           </div>
 
           <div class="form-group">
-            <label for="love-message">Dedication or Note <span class="label-optional">(Optional)</span></label>
-            <input type="text" id="love-message" name="message" placeholder="e.g. Forever and always" maxlength="120" autocomplete="off" />
+            <label for="love-message">Dedication Note <span class="label-optional">(Optional)</span></label>
+            <input type="text" id="love-message" name="message" placeholder="e.g. Forever together" maxlength="120" autocomplete="off" />
           </div>
 
-          <!-- Manual UI Customization Options -->
+          <!-- Manual Customization Option -->
           <div class="form-group" style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
-            <label style="font-size: 0.8rem; margin-bottom: 6px; display: block; color: var(--text-secondary);">🎨 Manual Card Customization</label>
+            <label style="font-size: 0.8rem; margin-bottom: 6px; display: block; color: var(--text-secondary);">🎨 Manual Card Theme Options</label>
             <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between;">
               <div>
                 <label for="card-theme-select" style="font-size: 0.75rem; color: var(--text-muted);">Theme Color:</label>
                 <select id="card-theme-select" style="background: #18181b; color: #fff; border: 1px solid var(--border-subtle); padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">
-                  <option value="gradient">Neon Rose &amp; Violet</option>
-                  <option value="crimson">Crimson Red</option>
-                  <option value="sunset">Sunset Orange</option>
+                  <option value="rose">Neon Rose (#ff6584)</option>
+                  <option value="crimson">Crimson Red (#ff334b)</option>
+                  <option value="sunset">Sunset Gold (#ffa15c)</option>
                 </select>
               </div>
               <div>
@@ -75,8 +74,8 @@
     </div>
   </section>
 
-  <!-- SCREEN 2: Animation & Download View -->
-  <section id="screen-2" class="screen screen-hidden" aria-label="Love Animation">
+  <!-- SCREEN 2: Animation & Download -->
+  <section id="screen-2" class="screen screen-hidden">
     <div class="names-overlay" id="names-overlay">
       <div id="names-display" class="names-heading"></div>
       <p id="wish-display" class="names-subtext">Together Always</p>
