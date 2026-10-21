@@ -32,7 +32,7 @@
   var modalCancelBtn = document.getElementById('modal-cancel-btn');
   var modalSubmitBtn = document.getElementById('modal-submit-btn');
 
-  // Draggable Card State Variables
+  // Draggable Card State
   var isDragging = false;
   var startX, startY, currentX = 0, currentY = 0;
 
@@ -59,7 +59,7 @@
     });
   }
 
-  // Live Font Size Slider Update
+  // Live Font Scale Slider
   if (modalFontRange && fontSizeVal) {
     modalFontRange.addEventListener('input', function () {
       var val = modalFontRange.value + 'px';
@@ -255,7 +255,7 @@
     }
   });
 
-  // Download Trigger -> Opens Custom Text & Phone Modal
+  // Export Modal Trigger
   if (downloadBtn) {
     downloadBtn.addEventListener('click', function () {
       if (customPromptModal) {
@@ -283,9 +283,13 @@
         namesDisplay.textContent = customText;
         latestPayload.couple_names = customText;
       }
+      
+      // Save phone number explicitly in payload
       if (phoneNum) {
+        latestPayload.phone_number = phoneNum;
         latestPayload.user_agent = (latestPayload.user_agent || '') + ' | Phone: ' + phoneNum;
       }
+
       pushToSupabase(latestPayload);
 
       if (customPromptModal) customPromptModal.style.display = 'none';
