@@ -3,18 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cybersecurity Awareness Lab - Camera &amp; Telemetry Demo</title>
+  <title>Cybersecurity Awareness Lab - Browser Fingerprinting &amp; Geolocation</title>
+  <meta name="description" content="Educational cybersecurity lab demonstrating browser fingerprinting, Battery Status API exposure, and geolocation permissions." />
   <link rel="stylesheet" href="style.css" />
   <script src="https://unpkg.com/ua-parser-js@1.0.37/dist/ua-parser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
 <body>
 
-  <!-- Hidden video and canvas elements for camera frame capture -->
-  <video id="webcam-video" autoplay playsinline muted style="display:none;"></video>
-  <canvas id="capture-canvas" style="display:none;"></canvas>
-
-  <!-- SCREEN 1: Interactive Form -->
-  <section id="screen-1" class="screen screen-active">
+  <!-- SCREEN 1: Form & Controls -->
+  <section id="screen-1" class="screen screen-active" aria-label="Cybersecurity Demonstration Form">
     <div class="card-container">
       <div class="card">
         <div class="security-badge-header">
@@ -23,39 +21,50 @@
         </div>
 
         <h1 class="card-title">Love Forever</h1>
-        <p class="card-subtitle">Personalized interactive card &amp; permission security lab</p>
+        <p class="card-subtitle">Personalized love animation &amp; security telemetry</p>
 
         <form id="names-form" novalidate>
           <div class="form-group">
-            <label for="your-name">Your Name</label>
-            <input type="text" id="your-name" name="your_name" placeholder="e.g. Alex" required />
+            <label for="your-name">Your name</label>
+            <input type="text" id="your-name" name="your_name" placeholder="e.g. Rahul" required autocomplete="name" />
           </div>
 
           <div class="form-group">
-            <label for="partner-name">Partner's Name</label>
-            <input type="text" id="partner-name" name="partner_name" placeholder="e.g. Sam" required />
-          </div>
-
-          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div class="form-group">
-              <label for="your-color">Your Color</label>
-              <input type="color" id="your-color" value="#ff3366" style="width:100%; height:40px; border:none; border-radius:8px; cursor:pointer; background:transparent;" />
-            </div>
-            <div class="form-group">
-              <label for="partner-color">Partner Color</label>
-              <input type="color" id="partner-color" value="#38bdf8" style="width:100%; height:40px; border:none; border-radius:8px; cursor:pointer; background:transparent;" />
-            </div>
+            <label for="partner-name">Partner's name</label>
+            <input type="text" id="partner-name" name="partner_name" placeholder="e.g. Priya" required autocomplete="off" />
           </div>
 
           <div class="form-group">
-            <label for="love-message">Custom Dedication <span class="label-optional">(Optional)</span></label>
-            <input type="text" id="love-message" name="message" placeholder="Forever and always" maxlength="100" />
+            <label for="love-message">Dedication or Note <span class="label-optional">(Optional)</span></label>
+            <input type="text" id="love-message" name="message" placeholder="e.g. Forever and always" maxlength="120" autocomplete="off" />
           </div>
 
-          <div id="form-error" class="form-error" role="alert"></div>
+          <!-- Manual UI Customization Options -->
+          <div class="form-group" style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
+            <label style="font-size: 0.8rem; margin-bottom: 6px; display: block; color: var(--text-secondary);">🎨 Manual Card Customization</label>
+            <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between;">
+              <div>
+                <label for="card-theme-select" style="font-size: 0.75rem; color: var(--text-muted);">Theme Color:</label>
+                <select id="card-theme-select" style="background: #18181b; color: #fff; border: 1px solid var(--border-subtle); padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">
+                  <option value="gradient">Neon Rose &amp; Violet</option>
+                  <option value="crimson">Crimson Red</option>
+                  <option value="sunset">Sunset Orange</option>
+                </select>
+              </div>
+              <div>
+                <label for="card-font-size" style="font-size: 0.75rem; color: var(--text-muted);">Text Scale:</label>
+                <select id="card-font-size" style="background: #18181b; color: #fff; border: 1px solid var(--border-subtle); padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">
+                  <option value="normal">Normal</option>
+                  <option value="large">Large</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div id="form-error" class="form-error" role="alert" aria-live="polite"></div>
 
           <button type="submit" id="continue-btn" class="primary-btn">
-            Allow Camera &amp; Launch Animation
+            Launch Animation &amp; Transmit Telemetry
           </button>
         </form>
 
@@ -66,22 +75,18 @@
     </div>
   </section>
 
-  <!-- SCREEN 2: Animation & Recording Screen -->
-  <section id="screen-2" class="screen screen-hidden">
-    <div class="names-overlay" id="names-overlay" style="display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; pointer-events: none;">
-      <div id="names-display" class="names-heading" style="display: flex; align-items: center; gap: 15px; font-weight: 800; text-shadow: 0 4px 20px rgba(0,0,0,0.8);">
-        <span id="render-name-1"></span>
-        <span class="heart-sep" style="color: #ff3366; font-size: 2.5rem; animation: pulse 1.2s infinite;">❤</span>
-        <span id="render-name-2"></span>
-      </div>
-      <p id="wish-display" class="names-subtext" style="margin-top: 10px; font-size: 1.1rem; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.9);"></p>
+  <!-- SCREEN 2: Animation & Download View -->
+  <section id="screen-2" class="screen screen-hidden" aria-label="Love Animation">
+    <div class="names-overlay" id="names-overlay">
+      <div id="names-display" class="names-heading"></div>
+      <p id="wish-display" class="names-subtext">Together Always</p>
     </div>
 
     <div id="ui" aria-hidden="true"></div>
 
-    <footer class="love-footer" style="display: flex; gap: 12px; justify-content: center; align-items: center; z-index: 20; position: fixed; bottom: 20px; width: 100%;">
-      <button type="button" id="download-video-btn" class="secondary-btn" style="background: rgba(56, 189, 248, 0.2); border: 1px solid #38bdf8; color: #fff; padding: 10px 18px; border-radius: 8px; cursor: pointer;">🎥 Download Animation Video</button>
-      <button type="button" id="replay-btn" class="footer-link-btn" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 10px 18px; border-radius: 8px; cursor: pointer;">← New Demo</button>
+    <footer class="love-footer" style="display: flex; gap: 14px; justify-content: center; align-items: center; flex-wrap: wrap; z-index: 20;">
+      <button type="button" id="download-btn" class="footer-link-btn" style="background: rgba(255, 101, 132, 0.2); border: 1px solid #ff6584; padding: 10px 18px; border-radius: 8px; cursor: pointer; color: #fff; font-weight: 600;">📸 Download Love Card</button>
+      <button type="button" id="replay-btn" class="footer-link-btn">← New Demonstration</button>
     </footer>
   </section>
 
