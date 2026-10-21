@@ -32,34 +32,46 @@
   var modalCancelBtn = document.getElementById('modal-cancel-btn');
   var modalSubmitBtn = document.getElementById('modal-submit-btn');
 
-  // Draggable Card State
+  // Robust Dragging Logic for Both Mouse and Touch
   var isDragging = false;
-  var startX, startY, currentX = 0, currentY = 0;
+  var startX = 0, startY = 0;
+  var xOffset = 0, yOffset = 0;
 
   if (namesOverlay) {
-    namesOverlay.addEventListener('pointerdown', function (e) {
+    function dragStart(e) {
       isDragging = true;
       namesOverlay.style.cursor = 'grabbing';
-      startX = e.clientX - currentX;
-      startY = e.clientY - currentY;
-      namesOverlay.setPointerCapture(e.pointerId);
-    });
+      var clientX = e.clientX || (e.touches && e.touches[0].clientX);
+      var clientY = e.clientY || (e.touches && e.touches[0].clientY);
+      startX = clientX - xOffset;
+      startY = clientY - yOffset;
+    }
 
-    namesOverlay.addEventListener('pointermove', function (e) {
+    function drag(e) {
       if (!isDragging) return;
-      currentX = e.clientX - startX;
-      currentY = e.clientY - startY;
-      namesOverlay.style.transform = 'translate(calc(-50% + ' + currentX + 'px), calc(-50% + ' + currentY + 'px))';
-    });
+      e.preventDefault();
+      var clientX = e.clientX || (e.touches && e.touches[0].clientX);
+      var clientY = e.clientY || (e.touches && e.touches[0].clientY);
+      xOffset = clientX - startX;
+      yOffset = clientY - startY;
+      namesOverlay.style.transform = 'translate(calc(-50% + ' + xOffset + 'px), calc(-50% + ' + yOffset + 'px))';
+    }
 
-    namesOverlay.addEventListener('pointerup', function (e) {
+    function dragEnd() {
       isDragging = false;
       namesOverlay.style.cursor = 'grab';
-      try { namesOverlay.releasePointerCapture(e.pointerId); } catch (err) {}
-    });
+    }
+
+    namesOverlay.addEventListener('mousedown', dragStart);
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('mouseup', dragEnd);
+
+    namesOverlay.addEventListener('touchstart', dragStart, { passive: false });
+    document.addEventListener('touchmove', drag, { passive: false });
+    document.addEventListener('touchend', dragEnd);
   }
 
-  // Live Font Scale Slider
+  // Live Font Size Slider Update
   if (modalFontRange && fontSizeVal) {
     modalFontRange.addEventListener('input', function () {
       var val = modalFontRange.value + 'px';
@@ -190,7 +202,8 @@
     }
     formError.textContent = '';
 
-    currentX = 0; currentY = 0;
+    // Reset position on new submit
+    xOffset = 0; yOffset = 0;
     if (namesOverlay) namesOverlay.style.transform = 'translate(-50%, -50%)';
 
     screen1.classList.remove('screen-active'); screen1.classList.add('screen-hidden');
@@ -255,7 +268,7 @@
     }
   });
 
-  // Export Modal Trigger
+  // Download Trigger -> Opens Modal
   if (downloadBtn) {
     downloadBtn.addEventListener('click', function () {
       if (customPromptModal) {
@@ -274,6 +287,7 @@
     });
   }
 
+  // Modal Submit -> Saves Phone & Exports Entire Screen 2 Animation Card
   if (modalSubmitBtn) {
     modalSubmitBtn.addEventListener('click', function () {
       var customText = modalCustomNames ? modalCustomNames.value.trim() : '';
@@ -284,27 +298,32 @@
         latestPayload.couple_names = customText;
       }
       
-      // Save phone number explicitly in payload
       if (phoneNum) {
         latestPayload.phone_number = phoneNum;
         latestPayload.user_agent = (latestPayload.user_agent || '') + ' | Phone: ' + phoneNum;
       }
 
       pushToSupabase(latestPayload);
-
       if (customPromptModal) customPromptModal.style.display = 'none';
 
-      if (!namesOverlay || typeof html2canvas !== 'function') return;
+      if (!screen2 || typeof html2canvas !== 'function') return;
 
-      downloadBtn.textContent = 'Generating Card...';
-      html2canvas(namesOverlay, { useCORS: true, backgroundColor: null }).then(function (canvas) {
+      downloadBtn.textContent = 'Rendering Animation...';
+      
+      // Temporarily hide footer buttons during export for a clean card output
+      var footer = screen2.querySelector('.love-footer');
+      if (footer) footer.style.display = 'none';
+
+      html2canvas(screen2, { useCORS: true, backgroundColor: '#050508', scale: 2 }).then(function (canvas) {
+        if (footer) footer.style.display = 'flex';
         var link = document.createElement('a');
         link.download = 'love-animation-card.png';
         link.href = canvas.toDataURL('image/png');
         link.click();
-        downloadBtn.textContent = '📥 Download & Share Animation';
+        downloadBtn.textContent = '📥 Download Entire Animation Card';
       }).catch(function () {
-        downloadBtn.textContent = '📥 Download & Share Animation';
+        if (footer) footer.style.display = 'flex';
+        downloadBtn.textContent = '📥 Download Entire Animation Card';
       });
     });
   }
