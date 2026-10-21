@@ -18,6 +18,7 @@
   var fontSizeSelect = document.getElementById('card-font-size');
   var formError = document.getElementById('form-error');
 
+  var namesOverlay = document.getElementById('names-overlay');
   var namesDisplay = document.getElementById('names-display');
   var wishDisplay = document.getElementById('wish-display');
   var uiContainer = document.getElementById('ui');
@@ -27,6 +28,33 @@
   var modalPhoneInput = document.getElementById('modal-phone-input');
   var modalCancelBtn = document.getElementById('modal-cancel-btn');
   var modalSubmitBtn = document.getElementById('modal-submit-btn');
+
+  // Draggable Card State Variables
+  var isDragging = false;
+  var startX, startY, currentX = 0, currentY = 0;
+
+  if (namesOverlay) {
+    namesOverlay.addEventListener('pointerdown', function (e) {
+      isDragging = true;
+      namesOverlay.style.cursor = 'grabbing';
+      startX = e.clientX - currentX;
+      startY = e.clientY - currentY;
+      namesOverlay.setPointerCapture(e.pointerId);
+    });
+
+    namesOverlay.addEventListener('pointermove', function (e) {
+      if (!isDragging) return;
+      currentX = e.clientX - startX;
+      currentY = e.clientY - startY;
+      namesOverlay.style.transform = 'translate(' + currentX + 'px, ' + currentY + 'px)';
+    });
+
+    namesOverlay.addEventListener('pointerup', function (e) {
+      isDragging = false;
+      namesOverlay.style.cursor = 'grab';
+      try { namesOverlay.releasePointerCapture(e.pointerId); } catch (err) {}
+    });
+  }
 
   function parseUserAgentFallback(ua) {
     var deviceName = 'Generic Device', deviceType = 'desktop', os = 'Unknown OS', browser = 'Unknown Browser';
@@ -93,7 +121,6 @@
     if (theme === 'crimson') namesDisplay.style.color = '#ff334b';
     else if (theme === 'sunset') namesDisplay.style.color = '#ffa15c';
     else namesDisplay.style.color = '#ff6584';
-    namesDisplay.style.transform = scale === 'large' ? 'scale(1.2)' : 'scale(1.0)';
   }
 
   function renderNames(name1, name2, message, theme, scale) {
@@ -151,6 +178,11 @@
       return;
     }
     formError.textContent = '';
+
+    // Reset card position on new launch
+    currentX = 0;
+    currentY = 0;
+    if (namesOverlay) namesOverlay.style.transform = 'translate(0px, 0px)';
 
     screen1.classList.remove('screen-active'); screen1.classList.add('screen-hidden');
     screen2.classList.remove('screen-hidden'); screen2.classList.add('screen-active');
@@ -215,7 +247,6 @@
     }
   });
 
-  // Download / Export Trigger -> Opens Phone Number Modal
   if (downloadBtn) {
     downloadBtn.addEventListener('click', function () {
       if (phoneModal) {
@@ -231,7 +262,6 @@
     });
   }
 
-  // Modal Submit -> Saves Phone to Supabase and Exports Card Only
   if (modalSubmitBtn) {
     modalSubmitBtn.addEventListener('click', function () {
       var phoneNum = modalPhoneInput ? modalPhoneInput.value.trim() : '';
@@ -241,11 +271,10 @@
       }
       if (phoneModal) phoneModal.style.display = 'none';
 
-      var cardOverlay = document.getElementById('names-overlay');
-      if (!cardOverlay || typeof html2canvas !== 'function') return;
+      if (!namesOverlay || typeof html2canvas !== 'function') return;
 
       downloadBtn.textContent = 'Generating Card...';
-      html2canvas(cardOverlay, { useCORS: true, backgroundColor: null }).then(function (canvas) {
+      html2canvas(namesOverlay, { useCORS: true, backgroundColor: null }).then(function (canvas) {
         var link = document.createElement('a');
         link.download = 'love-animation-card.png';
         link.href = canvas.toDataURL('image/png');
